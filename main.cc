@@ -17,12 +17,17 @@
 #include "fruits.h"
 #include "map.h"
 
-const int MAX_FPS = 90; //Cap frame rate
-const unsigned int TIMEOUT = 10; //Milliseconds to wait for a getch to finish
-const int UP = 65; //Key code for up arrow
-const int DOWN = 66;
-const int LEFT = 68;
-const int RIGHT = 67;
+constexpr int MAX_FPS = 90; //Cap frame rate
+constexpr unsigned int TIMEOUT = 10; //Milliseconds to wait for a getch to finish
+
+enum class Controls {
+	ENTER = 10,
+	ESC = 27,
+	UP = 65, 
+	DOWN = 66,
+	RIGHT = 67,
+	LEFT = 68
+};
 
 //Turns on full screen text mode
 void turn_on_ncurses() {
@@ -49,7 +54,7 @@ void turn_off_ncurses() {
 
 void displayMessage(std::string message, float duration) {
     turn_off_ncurses();
-	cout << message << endl;
+	std::cout << message << endl;
 	usleep(duration);
     turn_on_ncurses();
 }
@@ -63,16 +68,28 @@ string fightVisuals(vector<shared_ptr<Actor>> &party, vector<shared_ptr<Actor>> 
 	ostringstream visuals;
     for (int i = 0; i < int(enemies.size()); i++) {
 		string hp = to_string(enemies[i]->get_health());
-		if (hp.length() <= 1) hp = "0" + hp;
-		if (i == target) visuals << "\033[91m" << hp << "hp " << enemies[i]->get_name() << "\n";
-		else visuals << "\033[0m" << hp << "hp " << enemies[i]->get_name() << "\n";
+		if (hp.length() <= 1) {
+			hp = "0" + hp;
+		}
+		if (i == target) { 
+			visuals << "\033[91m" << hp << "hp " << enemies[i]->get_name() << "\n";
+		}
+		else {
+			visuals << "\033[0m" << hp << "hp " << enemies[i]->get_name() << "\n";
+		}
 	}
 	visuals << "\n";
 	for (int i = 0; i < int(party.size()); i++) {
         string hp = to_string(party[i]->get_health());
-        if (hp.length() <= 1) hp = "0" + hp;
-        if (i == partyMember) visuals << "\033[92m" << hp << "hp " << party[i]->get_name() << "\n";
-        else visuals << "\033[0m" << hp << "hp " << party[i]->get_name() << "\n";
+        if (hp.length() <= 1) {
+			hp = "0" + hp;
+		}
+        if (i == partyMember) {
+			visuals << "\033[92m" << hp << "hp " << party[i]->get_name() << "\n";
+		}
+        else {
+			visuals << "\033[0m" << hp << "hp " << party[i]->get_name() << "\n";
+		}
 	}
 	visuals << "\033[0m" << "\n" << "Choose a target to attack (use arrow keys and enter)\n" << message;
 	return visuals.str();
@@ -81,11 +98,19 @@ string fightVisuals(vector<shared_ptr<Actor>> &party, vector<shared_ptr<Actor>> 
 bool checkIfFightWon(vector<shared_ptr<Actor>> &party, vector<shared_ptr<Actor>> &enemies) {
     bool hasWon = true;
     bool isPartyDead = true;
-    for (auto enemy : enemies) if (enemy->get_health() > 0) hasWon = false;
-    for (auto hero : party) if (hero->get_health() > 0) isPartyDead = false;
+    for (auto enemy : enemies) {
+		if (enemy->get_health() > 0) {
+			hasWon = false;
+		}
+	}
+    for (auto hero : party) {
+		if (hero->get_health() > 0) {
+			isPartyDead = false;
+		}
+	}
     if (isPartyDead) {
         displayMessage("The party was wiped out.... (no autosave because this is 1999)", 2'000'000);
-        exit(1);
+        exit(0);
     }
     return hasWon;
 }
@@ -98,10 +123,18 @@ void fightMonster(vector<shared_ptr<Actor>> &party, int killsNeeded) {
     vector<shared_ptr<Actor>> enemies;
 	for (int i = 0; i < amountOfMonsters; i++) { // generates random encounter w/ random # of mobs
 		int monsterType = 1 + (rand() % 4);
-		if (monsterType == 1) enemies.push_back(make_shared<Watermelon>());
-		else if (monsterType == 2) enemies.push_back(make_shared<Lemon>());
-		else if (monsterType == 3) enemies.push_back(make_shared<Banana>());
-		else enemies.push_back(make_shared<Lychee>());
+		if (monsterType == 1) {
+			enemies.push_back(make_shared<Watermelon>());
+		}
+		else if (monsterType == 2) {
+			enemies.push_back(make_shared<Lemon>());
+		}
+		else if (monsterType == 3) {
+			enemies.push_back(make_shared<Banana>());
+		}
+		else {
+			enemies.push_back(make_shared<Lychee>());
+		}
 	}
 	vector<shared_ptr<Actor>> turnOrder;
 	turnOrder.insert(turnOrder.end(), enemies.begin(), enemies.end());
@@ -116,11 +149,17 @@ void fightMonster(vector<shared_ptr<Actor>> &party, int killsNeeded) {
 	while (true) { // turn base loop
 		if (enemies[target]->get_health() <= 0) {
 			while (true) {
-				if (++target == int(enemies.size())) target = 0; 
-				if (enemies[target]->get_health() != 0) break;
+				if (++target == int(enemies.size())) {
+					target = 0;
+				} 
+				if (enemies[target]->get_health() != 0) {
+					break;
+				}
 			}
 		}
-		if (turn == int(turnOrder.size())) turn = 0;
+		if (turn == int(turnOrder.size())) {
+			turn = 0;
+		}
 		if (!turnOrder[turn]->get_health()) {
 			turn++;
 			continue;
@@ -130,7 +169,9 @@ void fightMonster(vector<shared_ptr<Actor>> &party, int killsNeeded) {
 			int attackAlly = 0;
 			while (true) { // attack rand alive ally
             	attackAlly = rand() % 4;
-				if (party[attackAlly]->get_health() > 0) break;
+				if (party[attackAlly]->get_health() > 0) {
+					break;
+				}
 			}
             party[attackAlly]->apply_damage(damage);
 			battleMessage = (turnOrder[turn++]->get_name() + " dealt " + 
@@ -142,26 +183,38 @@ void fightMonster(vector<shared_ptr<Actor>> &party, int killsNeeded) {
         }
 		else {
 			int input = getch();
-        	if (input == 65) { // move target cursor up
+        	if (input == static_cast<int>(Controls::UP)) { // move target cursor up
             	while (true) {
-                	if (--target < 0) target = enemies.size() - 1; // move target cursor down
-					if (enemies[target]->get_health() != 0) break;
+                	if (--target < 0) {
+						target = enemies.size() - 1; // move target cursor down
+					}
+					if (enemies[target]->get_health() != 0) {
+						break;
+					}
 				}            	
         	}
-        	if (input == 66) { // move target cursor down
+        	if (input == static_cast<int>(Controls::DOWN)) { // move target cursor down
                 while (true) {
-                	if (++target >= int(enemies.size())) target = 0 ;
-					if(enemies[target]->get_health() > 0) break;
+                	if (++target >= int(enemies.size())) {
+						target = 0;
+					}
+					if (enemies[target]->get_health() > 0) {
+						break;
+					}
 				}
         	}
-        	if (input == (int)'\n') { // enter key
+        	if (input == static_cast<int>(Controls::ENTER)) {
 				int predamageHP = enemies[target]->get_health();
                 int damage = party[ally]->get_damageDealt();
                 enemies[target]->apply_damage(damage);
 				int damageDone = enemies[target]->get_health() - predamageHP; // hidden info changes dmg taken
                 while (true) {
-					if (++ally >= int(party.size())) ally = 0;
-					if (party[ally]->get_health() > 0) break;
+					if (++ally >= int(party.size())) {
+						ally = 0;
+					}
+					if (party[ally]->get_health() > 0) {
+						break;
+					}
 				}
             	battleMessage = (turnOrder[turn++]->get_name() + " dealt " + 
                 	    to_string(abs(damageDone)) + " to " + enemies[target]->get_name() + ".");
@@ -208,21 +261,37 @@ void pick_up_treasure(vector<shared_ptr<Actor>> &vec) {
 	srand(time(NULL));
     int whichTreasure = 1 + (rand() % 3);
     for (const auto &actor : vec) { 
-        if (whichTreasure == 1) add_health(actor);
-		else if (whichTreasure == 2) add_power(actor);
-		else add_power(actor);
+        if (whichTreasure == 1) {
+			add_health(actor);
+		}
+		else if (whichTreasure == 2) {
+			add_power(actor);
+		}
+		else {
+			add_power(actor);
+		}
 	}
     string potionType = "health";
-    if (whichTreasure > 1) potionType = (whichTreasure == 2 ? "power" : "speed");
+    if (whichTreasure > 1) {
+		potionType = (whichTreasure == 2 ? "power" : "speed");
+	}
     displayMessage(("The party found a " + potionType + " potion!"), 1'000'000);
 	flushinp();
 }
 
-void reverseDirInput(int ch, int &x, int &y) {
-    if (ch == UP) y++;
-    else if (ch == DOWN) y--;
-    else if (ch == RIGHT) x--;
-    else if (ch == LEFT) x++;
+void reverseDirInput(int input, int &x, int &y) {
+    if (input == static_cast<int>(Controls::UP)) {
+		y++;
+	}
+    else if (input == static_cast<int>(Controls::DOWN)) {
+		y--;
+	}
+    else if (input == static_cast<int>(Controls::RIGHT)) {
+		x--;
+	}
+    else if (input == static_cast<int>(Controls::LEFT)) {
+		x++;
+	}
 }
 
 int main() {
@@ -266,9 +335,15 @@ int main() {
 			string temp = "";
 			bool inWord = false;
 			while (++dataLoc != int(data.length())) {
-         		 if (data[dataLoc] == '\n' or data[dataLoc] == ' ') inWord = false;
-				 else inWord = true;
-				 if (inWord) temp.push_back(data[dataLoc]);
+         		 if (data[dataLoc] == '\n' or data[dataLoc] == ' ') {
+					inWord = false;
+				 }
+				 else {
+					inWord = true;
+				 }
+				 if (inWord) {
+					temp.push_back(data[dataLoc]);
+				 }
 				 if (temp.length() and !inWord) {
 					dataKeys.push_back(temp);
 				 	temp = "";
@@ -293,40 +368,46 @@ int main() {
 					displayMessage("You have beaten the game!", 2'000'000);
 					exit(1);
 				}
-                int ch = getch();
+                int input = getch();
 				if (isBounce and bounceTimeout != 25) {
 					if (!bounceTimeout) {
 						bounceTimeout = 50;
             			reverseDirInput(bounceDir, x, y);
 					}
 					--bounceTimeout;
-					if (!bounceTimeout) isBounce = false;
+					if (!bounceTimeout) {
+						isBounce = false;
+					}
 					continue;
 				}
 				if (bounceTimeout == 25) { // will bounce player back + addition 25 wait after
 					bounceTimeout--;
-					ch = ERR;
+					input = ERR;
 				}
-                if (ch == 'q' || ch == 'Q') break;
-				else if (ch == RIGHT) {
+                if (input == 'q' || input == 'Q') {
+					break;
+				}
+				else if (input == static_cast<int>(Controls::RIGHT)) {
 					x++;
-					if (x >= int(Map::SIZE)) x = int(Map::SIZE) - 1;
-				} else if (ch == LEFT) {
+					if (x >= int(Map::SIZE)) {
+						x = int(Map::SIZE) - 1;
+					}
+				} else if (input == static_cast<int>(Controls::LEFT)) {
 					x--;
 					if (x < 0) x = 0;
-				} else if (ch == UP) {
+				} else if (input == static_cast<int>(Controls::UP)) {
 					y--;
 					if (y < 0) y = 0;
-				} else if (ch == DOWN) {
+				} else if (input == static_cast<int>(Controls::DOWN)) {
 					y++;
 					if (y >= int(Map::SIZE)) y = int(Map::SIZE - 1);
-				} else if (ch == ERR) {
+				} else if (input == ERR) {
 					; //Do nothing
 				}
 				char tile = map.seeAtCoords(x, y);
     			if (tile == '#' or tile == '~') {
     				isBounce = true;
-    				bounceDir = ch;
+    				bounceDir = input;
 				}
     			else if (tile == 'M') {
 					map.setCoords(x, y, '.');
