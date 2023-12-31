@@ -12,6 +12,15 @@ enum class MapTiles
 	TREASURE = '$'
 };
 
+enum class Controls 
+{
+	ESC = 27,
+	UP = 65, 
+	DOWN = 66,
+	RIGHT = 67,
+	LEFT = 68
+};
+
 struct MapCoordinates 
 {
     int col;
@@ -26,28 +35,17 @@ public:
 	MapTiles getMapTile(const MapCoordinates&);
     MapCoordinates getHeroPosition();
 	void setMapTile(MapCoordinates, MapTiles); // ??? This feels like the class should handle any tile setting...   
+    void draw();    
+    void waitForInput();
 
 private:
+    const int maxFPS = 90;
     const MapCoordinates mapSize = {100, 100};
     MapCoordinates heroPosition = {50, 50};
     std::vector<std::vector<MapTiles>> mapGrid;
-    void randomizeMap();
-};
-
-class Visuals 
-{
-public:
-    int getDisplaySize();
-    void draw(WorldMap&);
-
-private:
     const int displaySize = 30;
-};
-
-class Game 
-{
-public:
-
-private:
-    WorldMap worldMap = WorldMap();
+    void randomizeMap();
+    std::pair<int, int>  getColDisplayBoundaries();
+    std::pair<int, int>  getRowDisplayBoundaries();
+    int getTileColor(MapCoordinates);
 };
