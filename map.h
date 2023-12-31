@@ -14,36 +14,6 @@ class Map {
 	public:
 	char seeAtCoords(int x, int y) {return map.at(y).at(x);}
 	void setCoords(int x, int y, char newChar) {map.at(y).at(x) = newChar;}
-	void saveFile(int x, int y, vector<shared_ptr<Actor>> &party) {
-        ofstream data;
-        data.open("data.txt");
-        for (size_t i = 0; i < 100; i++) {
-            for(size_t j = 0; j < 100; j++) {
-                data << map.at(i).at(j);
-            }
-            data << '\n';
-        }
-        data << '\n';
-		data << " " << x << " " << y <<  " " << '\n';
-		for (auto hero : party) {
-			data << " " << hero->get_name() << " " << hero->get_speed() 
-					<< " " << hero->get_power() << " " << hero->get_health() << " " << '\n';
-		}
-        data.close();
-	}
-
-	string loadFile() {
-        string output = "";
-		fstream data;
-		data.open("data.txt", ios::in);
-		if (data.is_open()) {
-			string text = "";
-			while(getline(data, text)) {
-				output += text;
-			}
-		}
-		return output;
-	}
 
 	static const char HERO     = 'H';
 	static const char MONSTER  = 'M';

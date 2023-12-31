@@ -1,9 +1,9 @@
 CXX = g++
-CXXFLAGS = -std=c++14 -Wall -Wextra -Werror -pedantic -O3 -fstack-protector-strong -fsanitize=address -fno-omit-frame-pointer
+CXXFLAGS = -std=c++14 -Wall -Wextra -Werror -pedantic -O2 -fstack-protector-strong -fsanitize=address -fno-omit-frame-pointer
 
-SRCS = main.cc
+SRCS = main.cc Game.cc
 OBJS = $(SRCS:.cc=.o)
-HEADERS = fruits.h map.h
+HEADERS = fruits.h Game.h
 TARGET = RPG41
 
 LDLIBS = -lncurses

@@ -14,13 +14,15 @@
 #include <unistd.h>
 #include <time.h>
 #include <termios.h>
+#include <ncurses.h>
 #include "fruits.h"
-#include "map.h"
+#include "Game.h"
 
 constexpr int MAX_FPS = 90; //Cap frame rate
 constexpr unsigned int TIMEOUT = 10; //Milliseconds to wait for a getch to finish
 
-enum class Controls {
+enum class Controls 
+{
 	ENTER = 10,
 	ESC = 27,
 	UP = 65, 
@@ -30,7 +32,8 @@ enum class Controls {
 };
 
 //Turns on full screen text mode
-void turn_on_ncurses() {
+void turn_on_ncurses() 
+{
         initscr();//Start curses mode
         start_color(); //Enable Colors if possible
         init_pair(1,COLOR_WHITE,COLOR_BLACK); //Set up some color pairs
@@ -292,76 +295,34 @@ void reverseDirInput(int input, int &x, int &y) {
     else if (input == static_cast<int>(Controls::LEFT)) {
 		x++;
 	}
-}
 
+}
 int main() {
 //credit: got from  this SO post https://stackoverflow.com/questions/6899025/hide-user-input-on-password-prompt 
 	   
-		bool newGame = false;
-		string input = "";
-		cout << "new game? No save will result in new game either way.(y / n)";
-		cin >> input;
-		if (input == "y" or input == "Y") newGame = true;
-
 		termios oldt; // removes echo even when ncurses is off for unix systems
     	tcgetattr(STDIN_FILENO, &oldt);
     	termios newt = oldt;
     	newt.c_lflag &= ~ECHO;
     	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-		// ncurses was here before
-        Map map;
-		int tempX = 0, tempY = 0;
-        int x = Map::SIZE / 2, y = Map::SIZE / 2;
+        WorldMap worldMap; 
+		Visuals visuals;
+        int x = worldMap.getHeroPosition().col; 
+		int y = worldMap.getHeroPosition().row;
         int old_x = -1, old_y = -1;
 		vector<shared_ptr<Actor>> party;
 		party.push_back(make_shared<Chef>());
 		party.push_back(make_shared<Trainer>());
 		party.push_back(make_shared<Nutritionist>());
 		party.push_back(make_shared<Ninja>());
-		string data = map.loadFile();
-		int mapSize = 100;
-	    if (data.length() != 0 and !newGame) {
-			int dataLoc = 0;
-			int x = 0, y = 0; 
-			while (y != mapSize) {
-				map.setCoords(x++, y, data[dataLoc++]);
-				if (x == mapSize) {
-					x = 0;
-					y++;
-				}
-			}
-			vector<string> dataKeys;
-			string temp = "";
-			bool inWord = false;
-			while (++dataLoc != int(data.length())) {
-         		 if (data[dataLoc] == '\n' or data[dataLoc] == ' ') {
-					inWord = false;
-				 }
-				 else {
-					inWord = true;
-				 }
-				 if (inWord) {
-					temp.push_back(data[dataLoc]);
-				 }
-				 if (temp.length() and !inWord) {
-					dataKeys.push_back(temp);
-				 	temp = "";
-				 }
-			}
-           	tempX = stoi(dataKeys[0]);
-            tempY = stoi(dataKeys[1]);			
-		}
 		
       	std::sort(party.begin(), party.end(), speed_sort);
 		bool isBounce = false;
 		int bounceTimeout = 0;
 		int bounceDir = 0;
-		int monstersKilled = 0;
+ 		int monstersKilled = 0;
 		const int killsNeeded = 5;
-		if (!newGame) {
-			x = tempX; y = tempY;
-		}
 		turn_on_ncurses();
         while (true) {
 				if (monstersKilled == killsNeeded) {
@@ -389,37 +350,40 @@ int main() {
 				}
 				else if (input == static_cast<int>(Controls::RIGHT)) {
 					x++;
-					if (x >= int(Map::SIZE)) {
-						x = int(Map::SIZE) - 1;
+					if (x >= worldMap.getMapSize().col) 
+					{
+						x = worldMap.getMapSize().col - 1;
 					}
-				} else if (input == static_cast<int>(Controls::LEFT)) {
+				} else if (input == static_cast<int>(Controls::LEFT)) 
+				{
 					x--;
 					if (x < 0) x = 0;
-				} else if (input == static_cast<int>(Controls::UP)) {
+				} else if (input == static_cast<int>(Controls::UP)) 
+				{
 					y--;
 					if (y < 0) y = 0;
 				} else if (input == static_cast<int>(Controls::DOWN)) {
 					y++;
-					if (y >= int(Map::SIZE)) y = int(Map::SIZE - 1);
+					if (y >= worldMap.getMapSize().row) y = worldMap.getMapSize().row - 1;
 				} else if (input == ERR) {
 					; //Do nothing
 				}
-				char tile = map.seeAtCoords(x, y);
+				char tile = static_cast<char>(worldMap.getMapTile({x, y}));
     			if (tile == '#' or tile == '~') {
     				isBounce = true;
     				bounceDir = input;
 				}
     			else if (tile == 'M') {
-					map.setCoords(x, y, '.');
+					worldMap.setMapTile({x, y}, MapTiles::OPEN);
 					fightMonster(party, killsNeeded - ++monstersKilled);
 				}
     			else if (tile == '$') {
-					map.setCoords(x, y, '.');
+					worldMap.setMapTile({x, y}, MapTiles::OPEN);
 					pick_up_treasure(party);
 				}
                 if (x != old_x or y != old_y) {
-                        map.draw(x,y);
-                        mvprintw(Map::DISPLAY+1,0,"X: %i Y: %i\n",x,y);
+						visuals.draw(worldMap);
+                        mvprintw(visuals.getDisplaySize() + 1, 0, "X: %i Y: %i\n", x, y);
                         refresh();
                 }
                 old_x = x;
@@ -427,5 +391,5 @@ int main() {
                 usleep(1'000'000/MAX_FPS);
         }
         turn_off_ncurses();
-		map.saveFile(x, y, party);
+		std::cout << worldMap.getHeroPosition().col << "-" << worldMap.getHeroPosition().row << std::endl;
 }
