@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <iostream>
+#include <random> 
 
 enum class MapTiles 
 {
@@ -36,7 +37,8 @@ public:
     MapCoordinates getHeroPosition();
 	void setMapTile(MapCoordinates, MapTiles); // ??? This feels like the class should handle any tile setting...   
     void draw();    
-    void waitForInput();
+    void getInput();
+    void checkForTileEvent();
 
 private:
     const int maxFPS = 90;
@@ -44,8 +46,9 @@ private:
     MapCoordinates heroPosition = {50, 50};
     std::vector<std::vector<MapTiles>> mapGrid;
     const int displaySize = 30;
+    void randomizeTile(std::default_random_engine&, std::uniform_int_distribution<int>&, MapCoordinates);
     void randomizeMap();
-    std::pair<int, int>  getColDisplayBoundaries();
-    std::pair<int, int>  getRowDisplayBoundaries();
+    std::pair<int, int> getColDisplayBoundaries();
+    std::pair<int, int> getRowDisplayBoundaries();
     int getTileColor(MapCoordinates);
 };

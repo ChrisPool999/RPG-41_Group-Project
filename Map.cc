@@ -10,6 +10,7 @@ WorldMap::WorldMap()
 {
 	mapGrid = std::vector<std::vector<MapTiles>> (mapSize.row, std::vector<MapTiles>(mapSize.col, MapTiles::OPEN));
 	randomizeMap(); // can optimize these two lines to only create the map one time,
+    mapGrid[heroPosition.row][heroPosition.col] = MapTiles::HERO;
 }
 
 MapCoordinates WorldMap::getMapSize() 
@@ -19,7 +20,7 @@ MapCoordinates WorldMap::getMapSize()
 
 MapTiles WorldMap::getMapTile(const MapCoordinates &pos) 
 {
-        return mapGrid[pos.row][pos.col];
+    return mapGrid[pos.row][pos.col];
 }
 
 MapCoordinates WorldMap::getHeroPosition() 
@@ -29,7 +30,37 @@ MapCoordinates WorldMap::getHeroPosition()
 
 void WorldMap::setMapTile(MapCoordinates pos, MapTiles newTile)
 { 
-        mapGrid[pos.row][pos.col] = newTile;
+    mapGrid[pos.row][pos.col] = newTile;
+}
+
+void WorldMap::randomizeTile(std::default_random_engine &gen, std::uniform_int_distribution<int> &d100, MapCoordinates tile)
+{
+	if (d100(gen) <= 5) 
+    {
+		mapGrid[tile.row][tile.col] = MapTiles::MONSTER;
+	}
+	else if (d100(gen) <= 3) 
+    {
+		mapGrid[tile.row][tile.col] = MapTiles::TREASURE;
+	}
+	else if (d100(gen) <= 10) 
+    {
+		mapGrid[tile.row][tile.col] = MapTiles::WALL;
+	}
+	else if (d100(gen) <= 3) 
+    {
+		mapGrid[tile.row][tile.col] = MapTiles::WATER;
+	}
+	else if (d100(gen) <= 40) 
+    {
+		if (mapGrid[tile.row - 1][tile.col] == MapTiles::WATER ||
+            mapGrid[tile.row + 1][tile.col] == MapTiles::WATER ||
+            mapGrid[tile.row][tile.col - 1] == MapTiles::WATER ||
+            mapGrid[tile.row][tile.col + 1] == MapTiles::WATER) 
+		{
+			mapGrid[tile.row][tile.col] = MapTiles::WATER;
+		}
+	}
 }
 
 void WorldMap::randomizeMap() 
@@ -41,41 +72,15 @@ void WorldMap::randomizeMap()
 		for (int j = 0; j < mapSize.col; j++) 
         {
 			if (i == 0 || j == 0 || i == mapSize.row - 1 || j == mapSize.col - 1) 
-            {
+    		{
 				mapGrid[i][j] = MapTiles::WALL; 
-            }
-			else 
-            {
-				if (d100(gen) <= 5) 
-                {
-					mapGrid[i][j] = MapTiles::MONSTER;
-				}
-				else if (d100(gen) <= 3) 
-                {
-					mapGrid[i][j] = MapTiles::TREASURE;
-				}
-				else if (d100(gen) <= 10) 
-                {
-					mapGrid[i][j] = MapTiles::WALL;
-				}
-				else if (d100(gen) <= 3) 
-                {
-					mapGrid[i][j] = MapTiles::WATER;
-				}
-				else if (d100(gen) <= 40) 
-                {
-					if (mapGrid[i-1][j] == MapTiles::WATER ||
-                        mapGrid[i+1][j] == MapTiles::WATER ||
-                        mapGrid[i][j-1] == MapTiles::WATER ||
-                        mapGrid[i][j+1] == MapTiles::WATER) 
-					{
-						mapGrid[i][j] = MapTiles::WATER;
-					}
-				}
+    		}
+			else
+			{
+				randomizeTile(gen, d100, {i, j});
 			}
 		}
 	}
-    mapGrid[heroPosition.row][heroPosition.col] = MapTiles::HERO;
 }
 
 std::pair<int, int> WorldMap::getColDisplayBoundaries()
@@ -135,79 +140,76 @@ int WorldMap::getTileColor(MapCoordinates pos) // BUG:: WHAT IF THEY DONT REQUES
 
 void WorldMap::draw() 
 {
-		int rowStart = getRowDisplayBoundaries().first; 
-		int rowEnd = getRowDisplayBoundaries().second;
-		int colStart = getColDisplayBoundaries().first;
-		int colEnd = getColDisplayBoundaries().second;
+	int rowStart = getRowDisplayBoundaries().first; 
+	int rowEnd = getRowDisplayBoundaries().second;
+	int colStart = getColDisplayBoundaries().first;
+	int colEnd = getColDisplayBoundaries().second;
 
-		for (int i = rowStart; i <= rowEnd; i++) 
+	for (int i = rowStart; i <= rowEnd; i++) 
+	{
+		for (int j = colStart; j <= colEnd; j++) 
 		{
-			for (int j = colStart; j <= colEnd; j++) 
+			if (i == getHeroPosition().row && j == getHeroPosition().col) 
 			{
-				if (i == getHeroPosition().row && j == getHeroPosition().col) 
-				{
-					attron(A_UNDERLINE | A_BOLD);
-					mvaddch(i - rowStart, j - colStart, 'H');
-					attroff(A_UNDERLINE | A_BOLD);
-				}
-				else 
-				{
-					int color = getTileColor({i, j});				
-					attron(COLOR_PAIR(color));
-					mvaddch(i - rowStart, j - colStart, static_cast<char>(getMapTile({i, j})));
-					attroff(COLOR_PAIR(color));
-				}
+				attron(A_UNDERLINE | A_BOLD);
+				mvaddch(i - rowStart, j - colStart, 'H');
+				attroff(A_UNDERLINE | A_BOLD);
+			}
+			else 
+			{
+				int color = getTileColor({i, j});				
+				attron(COLOR_PAIR(color));
+				mvaddch(i - rowStart, j - colStart, static_cast<char>(getMapTile({i, j})));
+				attroff(COLOR_PAIR(color));
 			}
 		}
-		mvprintw(displaySize + 1, 0, "X: %i Y: %i\n", getHeroPosition().col, getHeroPosition().row);
-		refresh();
+	}
+	mvprintw(displaySize + 1, 0, "X: %i Y: %i\n", getHeroPosition().col, getHeroPosition().row);
+	refresh();
 };
 
-void WorldMap::waitForInput()
+void WorldMap::handleInput()
 {
-	while (true) 
+	Controls input = static_cast<Controls>(getch()); // BUG: if getch isnt a Controls it will be undefined behavior
+	switch (input)
 	{
-		Controls input = static_cast<Controls>(getch()); // BUG: if getch isnt a Controls it will be undefined behavior
-		switch (input)
-		{
-			case Controls::RIGHT:
-				heroPosition.col = std::min(heroPosition.col + 1, getMapSize().col - 1);
-				break;
-			case Controls::LEFT:
-				heroPosition.col = std::max(0, heroPosition.col - 1);
-				break;
-			case Controls::UP:
-				heroPosition.row = std::max(0, heroPosition.row - 1);
-				break;
-			case Controls::DOWN:
-				heroPosition.row = std::min(heroPosition.row + 1, getMapSize().row - 1);
-				break;
-			case Controls::ESC:
-				// BUG: need to add stuff to fix terminal
-				// exit(0);
-			default:
-				break;
-		}
+		case Controls::RIGHT:
+			heroPosition.col = std::min(heroPosition.col + 1, getMapSize().col - 1);
+			break;
+		case Controls::LEFT:
+			heroPosition.col = std::max(0, heroPosition.col - 1);
+			break;
+		case Controls::UP:
+			heroPosition.row = std::max(0, heroPosition.row - 1);
+			break;
+		case Controls::DOWN:
+			heroPosition.row = std::min(heroPosition.row + 1, getMapSize().row - 1);
+			break;
+		case Controls::ESC:
+			// BUG: need to add stuff to fix terminal
+			// exit(0);
+		default:
+			break;
+	}
+}
 
-		draw();
-
-		switch (getMapTile({heroPosition.row, heroPosition.col})) 
-		{
-			case MapTiles::MONSTER:
-				setMapTile({heroPosition.row, heroPosition.col}, MapTiles::OPEN);
-				break;
-			case MapTiles::TREASURE:
-				setMapTile({heroPosition.row, heroPosition.col}, MapTiles::OPEN);
-				break;
-			case MapTiles::WATER:
-				;
-				break;
-			case MapTiles::WALL:
-				;
-				break;
-			default:
-				break;
-		}
-		usleep(1'000'000/maxFPS);
-    }
+void WorldMap::checkForTileEvent()
+{
+	switch (getMapTile({heroPosition.row, heroPosition.col})) 
+	{
+		case MapTiles::MONSTER:
+			setMapTile({heroPosition.row, heroPosition.col}, MapTiles::OPEN);
+			break;
+		case MapTiles::TREASURE:
+			setMapTile({heroPosition.row, heroPosition.col}, MapTiles::OPEN);
+			break;
+		case MapTiles::WATER:
+			;
+			break;
+		case MapTiles::WALL:
+			;
+			break;
+		default:
+			break;
+	}
 }
